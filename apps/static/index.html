@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>複式簿記 - 確定申告</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-hover: #243044;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79b8ff;
+      --success: #3fb950;
+      --danger: #f85149;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--accent), #a371f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+    .filter-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .filter-group label { color: var(--text-muted); font-size: 0.85rem; }
+    select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--surface-hover); }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #ff6b6b; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-muted);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.25rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    input, textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .entries-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .entries-table th, .entries-table td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .entries-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .entries-table tr:hover { background: var(--surface-hover); }
+    .amount { font-family: 'JetBrains Mono', monospace; text-align: right; }
+    .actions { display: flex; gap: 0.5rem; }
+    .actions button { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+    .receipt-cell { min-width: 100px; }
+    .receipt-cell input[type="file"] { display: none; }
+    .receipt-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+    .receipt-link:hover { text-decoration: underline; }
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+    .toast.success { background: var(--success); color: #fff; }
+    .toast.error { background: var(--danger); color: #fff; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>複式簿記</h1>
+    <p class="subtitle">確定申告用・年毎の仕訳入力 <span id="versionCheck" style="font-size:0.7em;color:var(--text-muted)"></span></p>
+
+    <div class="toolbar">
+      <div class="filter-group">
+        <label>年度</label>
+        <select id="yearFilter">
+          <!-- JSで生成 -->
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>副業</label>
+        <select id="sideJobFilter">
+          <option value="">すべて</option>
+          <!-- JSで生成 -->
+        </select>
+      </div>
+      <button class="btn" onclick="loadEntries()">再読み込み</button>
+      <a id="excelLink" class="btn btn-secondary" href="#" download style="display:none">Excel出力</a>
+    </div>
+
+    <div class="card">
+      <h2>新規仕訳の登録</h2>
+      <form id="entryForm" class="form-grid">
+        <div class="form-group">
+          <label>年度</label>
+          <select name="year" required></select>
+        </div>
+        <div class="form-group">
+          <label>取引日</label>
+          <input type="date" name="date" required>
+        </div>
+        <div class="form-group">
+          <label>借方科目</label>
+          <select name="debit_account" required></select>
+        </div>
+        <div class="form-group">
+          <label>貸方科目</label>
+          <select name="credit_account" required></select>
+        </div>
+        <div class="form-group">
+          <label>借方金額</label>
+          <input type="number" name="debit_amount" min="1" step="1" required placeholder="0" id="debitAmount">
+        </div>
+        <div class="form-group">
+          <label>貸方金額</label>
+          <input type="number" name="credit_amount" min="1" step="1" required placeholder="0" id="creditAmount">
+        </div>
+        <div class="form-group">
+          <label>副業種別</label>
+          <select name="side_job_type" required></select>
+        </div>
+        <div class="form-group full">
+          <label>摘要</label>
+          <textarea name="description" placeholder="取引の内容（任意）"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>領収書（任意・登録後にアップロードも可）</label>
+          <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn">登録</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>仕訳一覧</h2>
+      <table class="entries-table">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>借方</th>
+            <th class="amount">借方金額</th>
+            <th>貸方</th>
+            <th class="amount">貸方金額</th>
+            <th>摘要</th>
+            <th>副業</th>
+            <th>領収書</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="entriesBody">
+          <tr><td colspan="9" class="empty-state">読み込み中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+    let config = { side_job_types: [], accounts: [] };
+
+    async function fetchConfig() {
+      const res = await fetch(API + '/config');
+      config = await res.json();
+      return config;
+    }
+
+    function initYears() {
+      const currentYear = new Date().getFullYear();
+      const years = [];
+      for (let y = currentYear; y >= currentYear - 5; y--) years.push(y);
+      const opts = years.map(y => `<option value="${y}">${y}年</option>`).join('');
+      document.querySelectorAll('select[name="year"], #yearFilter').forEach(el => {
+        el.innerHTML = el.id === 'yearFilter' ? `<option value="">すべて</option>${opts}` : opts;
+      });
+    }
+
+    function initForm() {
+      const accounts = config.accounts || [];
+      const creditAccounts = config.credit_accounts || ["事業主借", "売上高"];
+      const debitOpts = accounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+      const creditOpts = creditAccounts.map(n => `<option value="${n}">${n}</option>`).join('');
+      document.querySelector('select[name="debit_account"]').innerHTML = '<option value="">選択</option>' + debitOpts;
+      document.querySelector('select[name="credit_account"]').innerHTML = '<option value="">選択</option>' + creditOpts;
+      const jobOpts = config.side_job_types.map(j => `<option value="${j}">${j}</option>`).join('');
+      document.querySelector('select[name="side_job_type"]').innerHTML = '<option value="">選択</option>' + jobOpts;
+      document.querySelector('#sideJobFilter').innerHTML = '<option value="">すべて</option>' + jobOpts;
+    }
+
+    function showToast(msg, type = 'success') {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    async function loadEntries() {
+      const year = document.getElementById('yearFilter').value;
+      const sideJob = document.getElementById('sideJobFilter').value;
+      let url = API + '/entries?';
+      if (year) url += `year=${year}&`;
+      if (sideJob) url += `side_job_type=${encodeURIComponent(sideJob)}`;
+
+      const res = await fetch(url);
+      const entries = await res.json();
+      const tbody = document.getElementById('entriesBody');
+
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">仕訳がありません</td></tr>';
+      } else {
+        tbody.innerHTML = entries.map(e => {
+          const debitAmt = Number(e.debit_amount ?? e.amount).toLocaleString();
+          const creditAmt = Number(e.credit_amount ?? e.amount).toLocaleString();
+          const receiptCell = e.receipt_file
+            ? `<a class="receipt-link" href="${API}/receipts/${encodeURI(e.receipt_file)}" target="_blank">表示</a>`
+            : `<label class="btn btn-secondary" style="cursor:pointer;margin:0"><input type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" onchange="uploadReceipt(${e.id}, this)">アップロード</label>`;
+          return `
+          <tr data-id="${e.id}">
+            <td>${e.date}</td>
+            <td>${e.debit_account}</td>
+            <td class="amount">${debitAmt}</td>
+            <td>${e.credit_account}</td>
+            <td class="amount">${creditAmt}</td>
+            <td>${e.description || '-'}</td>
+            <td>${e.side_job_type}</td>
+            <td class="receipt-cell">${receiptCell}</td>
+            <td class="actions">
+              <button class="btn btn-danger" onclick="deleteEntry(${e.id})">削除</button>
+            </td>
+          </tr>
+        `}).join('');
+      }
+
+      const y = year || document.querySelector('select[name="year"]').value || new Date().getFullYear();
+      document.getElementById('excelLink').href = `${API}/export/excel?year=${y}`;
+      document.getElementById('excelLink').style.display = 'inline-block';
+    }
+
+    async function uploadReceipt(entryId, input) {
+      const file = input?.files?.[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(API + '/entries/' + entryId + '/receipt', {
+        method: 'POST',
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast(data.detail || 'アップロードに失敗しました', 'error');
+        return;
+      }
+      showToast('領収書を保存しました');
+      input.value = '';
+      loadEntries();
+    }
+
+    async function deleteEntry(id) {
+      if (!confirm('この仕訳を削除しますか？')) return;
+      const res = await fetch(API + '/entries/' + id, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || '削除に失敗しました', 'error');
+        return;
+      }
+      showToast('削除しました');
+      loadEntries();
+    }
+
+    document.getElementById('entryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const debitAmt = parseFloat(fd.get('debit_amount'));
+      const creditAmt = parseFloat(fd.get('credit_amount'));
+      if (debitAmt !== creditAmt) {
+        showToast('借方金額と貸方金額は一致させる必要があります', 'error');
+        return;
+      }
+      const body = {
+        year: parseInt(fd.get('year')),
+        date: fd.get('date'),
+        debit_account: fd.get('debit_account'),
+        credit_account: fd.get('credit_account'),
+        debit_amount: debitAmt,
+        credit_amount: creditAmt,
+        description: fd.get('description') || null,
+        side_job_type: fd.get('side_job_type'),
+      };
+      const res = await fetch(API + '/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+        showToast(msg || '登録に失敗しました', 'error');
+        return;
+      }
+      const entryId = data.id;
+      const receiptFile = fd.get('receipt');
+      if (receiptFile && receiptFile.size > 0) {
+        const upFd = new FormData();
+        upFd.append('file', receiptFile);
+        const upRes = await fetch(API + '/entries/' + entryId + '/receipt', { method: 'POST', body: upFd });
+        if (!upRes.ok) showToast('領収書のアップロードに失敗しました', 'error');
+      }
+      showToast('登録しました');
+      e.target.reset();
+      loadEntries();
+    });
+
+    document.getElementById('yearFilter').addEventListener('change', loadEntries);
+    document.getElementById('sideJobFilter').addEventListener('change', loadEntries);
+
+    (async () => {
+      await fetchConfig();
+      const v = config._version;
+      document.getElementById('versionCheck').textContent = v ? `[${v}]` : '[サーバー接続確認]';
+      initYears();
+      initForm();
+      document.querySelector('select[name="year"]').value = new Date().getFullYear();
+      document.querySelector('input[name="date"]').value = new Date().toISOString().slice(0, 10);
+      await loadEntries();
+    })();
+  </script>
+</body>
+</html>
