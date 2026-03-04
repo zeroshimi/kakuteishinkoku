@@ -1,6 +1,7 @@
 venv/
 .env
 *.db
+!bookkeeping.db
 __pycache__/
 output/
 *.pyc
